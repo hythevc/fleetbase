@@ -1,0 +1,125 @@
+# Merge after the repository's docker-compose.yml with docker/cloud/compose.sh.
+x-api-environment: &api-environment
+  APP_KEY: ${FLEETBASE_APP_KEY:?Run docker/cloud/compose.sh to initialize local credentials}
+  APP_ENV: production
+  APP_DEBUG: "false"
+  APP_URL: ${FLEETBASE_PUBLIC_URL:-http://127.0.0.1:3000}
+  CONSOLE_HOST: ${FLEETBASE_PUBLIC_URL:-http://127.0.0.1:3000}
+  DATABASE_URL: mysql://fleetbase:${FLEETBASE_DB_PASSWORD:?Missing database password}@database/fleetbase
+  CACHE_URL: tcp://cache/0
+  REDIS_URL: tcp://cache/0
+  SESSION_DOMAIN: "null"
+  MAIL_MAILER: ${FLEETBASE_MAIL_MAILER:-log}
+  MAIL_FROM_ADDRESS: ${FLEETBASE_MAIL_FROM_ADDRESS:-fleetbase@example.test}
+  FILESYSTEM_DRIVER: ${FLEETBASE_FILESYSTEM_DRIVER:-public}
+  LOG_CHANNEL: stderr
+
+x-api-service: &api-service
+  image: ${FLEETBASE_API_IMAGE:-fleetbase-api-local:v0.7.67}
+  pull_policy: never
+  env_file:
+    - path: ./docker/cloud/integrations.env
+      required: false
+  environment: *api-environment
+  depends_on:
+    database:
+      condition: service_healthy
+    cache:
+      condition: service_healthy
+
+services:
+  database:
+    ports: !reset []
+    volumes: !override
+      - database-data:/var/lib/mysql
+      - ./docker/cloud/database-init.sql:/docker-entrypoint-initdb.d/10-fleetbase-schemas.sql:ro
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: ""
+      MYSQL_ROOT_PASSWORD: ${FLEETBASE_DB_ROOT_PASSWORD:?Missing database root password}
+      MYSQL_USER: fleetbase
+      MYSQL_PASSWORD: ${FLEETBASE_DB_PASSWORD:?Missing database password}
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 --silent"]
+
+  cache:
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+
+  socket:
+    image: fleetbase-socket:17.4.0
+    build:
+      context: ./docker/cloud
+      dockerfile: SocketCluster.Dockerfile
+      secrets:
+        - build_ca
+    pull_policy: never
+    ports: !reset []
+
+  application:
+    <<: *api-service
+    init: true
+    stop_grace_period: 30s
+    command: ["bash", "/usr/local/bin/fleetbase-cloud-start"]
+    environment:
+      <<: *api-environment
+      FLEETBASE_EMBED_WORKERS: ${FLEETBASE_EMBED_WORKERS:-true}
+    depends_on: !override
+      database:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: app-release
+    volumes: !override
+      - uploads:/fleetbase/api/storage/app
+      - ./docker/cloud/start-api.sh:/usr/local/bin/fleetbase-cloud-start:ro
+
+  queue:
+    <<: *api-service
+    profiles: [standalone-workers]
+    volumes:
+      - uploads:/fleetbase/api/storage/app
+
+  scheduler:
+    <<: *api-service
+    profiles: [standalone-workers]
+    volumes:
+      - uploads:/fleetbase/api/storage/app
+
+  httpd:
+    ports: !reset []
+    depends_on:
+      application:
+        condition: service_started
+        restart: true
+
+  console:
+    image: fleetbase-cloud-console:latest
+    pull_policy: never
+    build: !reset null
+    ports: !reset []
+    volumes: !reset []
+
+  gateway:
+    image: nginx:stable-alpine
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    volumes:
+      - ./docker/cloud/gateway.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - console
+      - httpd
+      - socket
+
+volumes:
+  database-data:
+  redis-data:
+  uploads:
+
+secrets:
+  build_ca:
+    file: ${CODEX_PROXY_CERT:-/etc/ssl/certs/ca-certificates.crt}

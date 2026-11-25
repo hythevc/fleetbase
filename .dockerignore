@@ -15,6 +15,9 @@ infra/*
 vagrant/*
 docker/Dockerfile
 docker/database/
+docker/cloud/.env*
+docker/cloud/integrations.env
+mcp/node_modules/
 deploy/*
 media/*
 data/*
