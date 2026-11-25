@@ -47,6 +47,18 @@ ORIGINAL, <<<'REPLACEMENT'
     }
 REPLACEMENT);
 
+if (is_file('routes/railway-marketing.php')) {
+    replaceInReleaseFile('app/Providers/RouteServiceProvider.php', <<<'ORIGINAL'
+            function () {
+                Route::get(
+ORIGINAL, <<<'REPLACEMENT'
+            function () {
+                require base_path('routes/railway-marketing.php');
+
+                Route::get(
+REPLACEMENT);
+}
+
 $legacyRequest = 'vendor/fleetbase/core-api/src/Http/Requests/SignUpRequest.php';
 replaceInReleaseFile($legacyRequest, <<<'ORIGINAL'
     public function authorize()

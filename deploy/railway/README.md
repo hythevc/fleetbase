@@ -17,3 +17,11 @@ Keep the setup token out of Vercel configuration, Git, and chat. The Fleetbase M
 - The queue checks Redis at startup and runs `php artisan queue:work --tries=3 --sleep=3`. The scheduler runs `go-crond --verbose root:./crontab`. Both receive the app configuration and the connection variables for the private MySQL and Redis services.
 - SocketCluster remains private because the included SocketCluster server has no organization-level authorization on browser subscriptions or publications. The Vercel console disables browser realtime until authenticated channels are available.
 - Default email uses the log driver. For account verification, password reset, and delivery notifications, set `MAIL_MAILER` and your provider credentials in Railway. Keep credentials in Railway and keep the rendering origin on Vercel.
+
+## Marketing demo requests
+
+The marketing site forwards JSON to `POST /marketing/v1/demo-requests`. Name and email are required. Company and message are optional, and the hidden `website` field is a honeypot. The API validates the submission, rate limits it, and stores it in a dedicated MySQL table for the company UUID configured as `FLEETBASE_MARKETING_COMPANY_UUID`. Identical retries return the same response without creating a second record. Fleetbase contacts, users, and email are outside this intake flow.
+
+An administrator who owns the configured company can list inquiries with `GET /marketing/v1/demo-requests` and their Fleetbase console bearer token. Use `limit` from 1 to 100 and pass the returned `next_before` value as `before` to fetch the next page. Responses are private and disable caching.
+
+`predeploy-api.sh` applies the marketing migration to the main database. The API startup script installs `marketing-routes.php` and clears the local route cache before serving traffic. The Railway variables supply the encoded predeploy script, migration, and routes so the pinned upstream image can remain the base.

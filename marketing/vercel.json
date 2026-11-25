@@ -1,0 +1,12 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "installCommand": "npm ci",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "rewrites": [
+    { "source": "/api/branding", "destination": "https://fleetbase-api-production-0a89e6b7.up.railway.app/int/v1/settings/branding" },
+    { "source": "/api/status", "destination": "https://fleetbase-api-production-0a89e6b7.up.railway.app/health" },
+    { "source": "/api/demo-requests", "destination": "https://fleetbase-api-production-0a89e6b7.up.railway.app/marketing/v1/demo-requests" }
+  ]
+}
