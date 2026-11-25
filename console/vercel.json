@@ -1,13 +1,23 @@
 {
-    "$schema": "https://openapi.vercel.sh/vercel.json",
-    "installCommand": "corepack pnpm install --frozen-lockfile",
-    "buildCommand": "JOBS=1 DISABLE_RUNTIME_CONFIG=false corepack pnpm build --environment production && node scripts/vercel-runtime-config.mjs",
-    "outputDirectory": "dist",
-    "headers": [
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "true",
+  "buildCommand": "tar -xzf fleetbase-console-dist.tar.gz",
+  "outputDirectory": "dist",
+  "headers": [
+    {
+      "source": "/fleetbase.config.json",
+      "headers": [
         {
-            "source": "/fleetbase.config.json",
-            "headers": [{ "key": "Cache-Control", "value": "no-store" }]
+          "key": "Cache-Control",
+          "value": "no-store"
         }
-    ],
-    "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
 }
