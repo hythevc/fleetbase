@@ -1,9 +1,11 @@
 import Route from '@ember/routing/route';
 import { inject as service } from '@ember/service';
+import config from '@fleetbase/console/config/environment';
 
 export default class OnboardIndexRoute extends Route {
     @service store;
     @service oauth;
+    @service installation;
     @service('onboarding-orchestrator') orchestrator;
 
     queryParams = {
@@ -19,6 +21,10 @@ export default class OnboardIndexRoute extends Route {
         // For the "Continue with ..." buttons on the sign-up form. Not awaited: a failure
         // leaves the list empty and the form is exactly what it was before OAuth.
         this.oauth.loadProviders();
+
+        if (config.APP.setupTokenRequired) {
+            return this.installation.checkOnboarding();
+        }
     }
 
     model() {

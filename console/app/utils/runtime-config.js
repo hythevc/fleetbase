@@ -9,6 +9,8 @@ import { debug } from '@ember/debug';
 const RUNTIME_CONFIG_MAP = {
     API_HOST: 'API.host',
     API_NAMESPACE: 'API.namespace',
+    SETUP_TOKEN_REQUIRED: 'APP.setupTokenRequired',
+    SOCKETCLUSTER_AUTO_CONNECT: 'socket.autoConnect',
     SOCKETCLUSTER_PATH: 'socket.path',
     SOCKETCLUSTER_HOST: 'socket.hostname',
     SOCKETCLUSTER_SECURE: 'socket.secure',
@@ -36,6 +38,8 @@ function coerceValue(key, value) {
         case 'SOCKETCLUSTER_PORT':
             return parseInt(value, 10);
 
+        case 'SETUP_TOKEN_REQUIRED':
+        case 'SOCKETCLUSTER_AUTO_CONNECT':
         case 'SOCKETCLUSTER_SECURE':
             return toBoolean(value);
 

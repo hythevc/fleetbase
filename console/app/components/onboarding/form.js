@@ -7,6 +7,7 @@ import { task } from 'ember-concurrency';
 import { onboardValidationsFor } from '../../validations/onboard';
 import lookupValidator from 'ember-changeset-validations';
 import Changeset from 'ember-changeset';
+import config from '@fleetbase/console/config/environment';
 
 export default class OnboardingFormComponent extends Component {
     @service fetch;
@@ -15,12 +16,14 @@ export default class OnboardingFormComponent extends Component {
     @service notifications;
     @service urlSearchParams;
     @service oauth;
+    @service installation;
     @tracked name;
     @tracked email;
     @tracked phone;
     @tracked organization_name;
     @tracked password;
     @tracked password_confirmation;
+    @tracked setupToken;
     @tracked error;
 
     constructor() {
@@ -92,10 +95,14 @@ export default class OnboardingFormComponent extends Component {
         return this.hasOauthIntent ? ['name', 'email', 'phone', 'organization_name'] : ['name', 'email', 'phone', 'organization_name', 'password', 'password_confirmation'];
     }
 
+    get needsSetupToken() {
+        return config.APP.setupTokenRequired && this.installation.shouldOnboard;
+    }
+
     get filled() {
         // eslint-disable-next-line ember/no-get
         const input = getProperties(this, ...this.requiredFields);
-        return Object.values(input).every((val) => !isBlank(val));
+        return Object.values(input).every((val) => !isBlank(val)) && (!this.needsSetupToken || !isBlank(this.setupToken));
     }
 
     @task *onboard(event) {
@@ -123,7 +130,8 @@ export default class OnboardingFormComponent extends Component {
         }
 
         try {
-            const { status, skipVerification, token, session } = yield this.fetch.post('onboard/create-account', input);
+            const options = this.needsSetupToken ? { headers: { 'X-Fleetbase-Setup-Token': this.setupToken?.trim() } } : {};
+            const { status, skipVerification, token, session } = yield this.fetch.post('onboard/create-account', input, options);
             if (status !== 'success') {
                 this.notifications.error('Onboard failed');
                 return;
@@ -132,6 +140,7 @@ export default class OnboardingFormComponent extends Component {
             // Single use: whether or not the rest of the wizard completes, this intent
             // is now spent server side and must not be replayed.
             this.oauth.clearRegistration();
+            this.setupToken = null;
 
             // save session
             this.args.context.persist('session', session);

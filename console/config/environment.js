@@ -24,6 +24,7 @@ module.exports = function (environment) {
         APP: {
             autoboot: true,
             extensions: asArray(getenv('EXTENSIONS')),
+            setupTokenRequired: false,
             disableRuntimeConfig: toBoolean(getenv('DISABLE_RUNTIME_CONFIG', environment === 'production')),
             disableFleetbaseAttribution: toBoolean(getenv('DISABLE_FLEETBASE_ATTRIBUTION', false)),
         },
